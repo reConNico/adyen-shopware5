@@ -2,6 +2,9 @@
 
 namespace AdyenPayment\Components\Integration;
 
+use Adyen\Core\BusinessLogic\Domain\Checkout\PaymentRequest\Exceptions\InvalidCurrencyCode;
+use Adyen\Core\BusinessLogic\Domain\Checkout\PaymentRequest\Models\Amount\Amount;
+use Adyen\Core\BusinessLogic\Domain\Checkout\PaymentRequest\Models\Amount\Currency;
 use Adyen\Core\BusinessLogic\Domain\Integration\Payment\ShopPaymentService;
 use Adyen\Core\BusinessLogic\Domain\Multistore\StoreContext;
 use Adyen\Core\BusinessLogic\Domain\Payment\Services\PaymentService;
@@ -22,6 +25,9 @@ use sOrder;
  */
 class OrderService implements OrderServiceInterface
 {
+    /** @var string */
+    private const APPLE_PAY = 'applepay';
+
     /**
      * @var OrderRepository
      */
@@ -58,7 +64,7 @@ class OrderService implements OrderServiceInterface
         $order = $this->orderRepository->getOrderByTemporaryId($merchantReference);
 
         if (empty($order)) {
-            throw new Exception('Order with cart ID: ' . $merchantReference . ' still not created.');
+            throw new Exception('Order with temporary ID: ' . $merchantReference . ' still not created.');
         }
 
         return $order->getShop()->getId() === (int)StoreContext::getInstance()->getStoreId();
@@ -140,7 +146,16 @@ class OrderService implements OrderServiceInterface
         if (in_array($methodName, PaymentService::CREDIT_CARD_BRANDS, true)) {
             $methodName = PaymentService::CREDIT_CARD_CODE;
         }
+
+        if (str_contains($methodName, self::APPLE_PAY)) {
+            $methodName = self::APPLE_PAY;
+        }
+
         $paymentMean = $this->getPaymentMethodService()->getPaymentMeanByName($methodName);
+
+        if (!$paymentMean) {
+            return;
+        }
 
         if (Plugin::isAdyenPaymentMean($orderPaymentMean->getName()) &&
             $paymentMean->getId() === $orderPaymentMean->getId()) {
@@ -148,6 +163,20 @@ class OrderService implements OrderServiceInterface
         }
 
         $this->orderRepository->setOrderPayment((int)$webhook->getMerchantReference(), $paymentMean);
+    }
+
+    /**
+     * @param string $merchantReference
+     *
+     * @return Amount
+     *
+     * @throws InvalidCurrencyCode
+     */
+    public function getOrderAmount(string $merchantReference): Amount
+    {
+        $order = $this->orderRepository->getOrderByTemporaryId($merchantReference);
+
+        return Amount::fromFloat($order->getInvoiceAmount(), Currency::fromIsoCode($order->getCurrency()));
     }
 
     /**

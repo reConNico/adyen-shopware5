@@ -7,13 +7,17 @@ use Adyen\Core\BusinessLogic\Domain\Checkout\PaymentRequest\Exceptions\InvalidCu
 use Adyen\Core\BusinessLogic\Domain\Checkout\PaymentRequest\Models\Amount\Amount;
 use Adyen\Core\BusinessLogic\Domain\Checkout\PaymentRequest\Models\Amount\Currency;
 use Adyen\Core\BusinessLogic\Domain\Checkout\PaymentRequest\Models\ShopperReference;
+use Adyen\Core\BusinessLogic\Domain\Connection\Exceptions\ConnectionSettingsNotFountException;
 use Adyen\Core\Infrastructure\Logger\Logger;
+use Adyen\Core\Infrastructure\ServiceRegister;
 use AdyenPayment\AdyenPayment;
 use AdyenPayment\Components\CheckoutConfigProvider;
 use AdyenPayment\Components\ErrorMessageProvider;
 use AdyenPayment\Components\PaymentMeansEnricher;
+use AdyenPayment\Services\CustomerService;
 use AdyenPayment\Utilities\Plugin;
 use AdyenPayment\Utilities\Url;
+use AdyenPayment\Utilities\Shop;
 
 /**
  * Class Shopware_Controllers_Frontend_AdyenPaymentProcess
@@ -57,6 +61,7 @@ class Shopware_Controllers_Frontend_AdyenPaymentProcess extends Shopware_Control
 
     /**
      * @return void
+     *
      * @throws Exception
      */
     public function preDispatch(): void
@@ -70,7 +75,9 @@ class Shopware_Controllers_Frontend_AdyenPaymentProcess extends Shopware_Control
 
     /**
      * Main entry point for checkout processing of adyen payment
+     *
      * @return void
+     *
      * @throws Exception
      */
     public function indexAction(): void
@@ -108,7 +115,7 @@ class Shopware_Controllers_Frontend_AdyenPaymentProcess extends Shopware_Control
         }
 
         $response = CheckoutAPI::get()
-            ->paymentRequest(Shopware()->Shop()->getId())
+            ->paymentRequest(Shop::getShopId())
             ->startTransaction(
                 new StartTransactionRequest(
                     $paymentMethodType,
@@ -155,6 +162,20 @@ class Shopware_Controllers_Frontend_AdyenPaymentProcess extends Shopware_Control
             return;
         }
 
+        if ($this->isAjaxRequest() && $paymentMethodType === 'scheme') {
+            $this->session->offsetSet('adyen_action', $response->getAction());
+            $this->session->offsetSet('signature', $basketSignature);
+            $this->session->offsetSet('orderReference', $orderReference);
+
+            $this->Front()->Plugins()->ViewRenderer()->setNoRender();
+            $this->Response()->setHeader('Content-Type', 'application/json');
+
+            $this->Response()->setBody(json_encode([
+                'nextStepUrl' =>  Url::getFrontUrl('AdyenClickToPay', 'index')
+            ]));
+
+            return;
+        }
 
         if ($this->isAjaxRequest()) {
             $this->Front()->Plugins()->ViewRenderer()->setNoRender();
@@ -189,6 +210,11 @@ class Shopware_Controllers_Frontend_AdyenPaymentProcess extends Shopware_Control
         $this->view->assign('orderReference', $orderReference);
     }
 
+    /**
+     * @return void
+     *
+     * @throws Exception
+     */
     public function handleAdditionalDataAction(): void
     {
         $this->setupRedirectResponse(
@@ -196,6 +222,11 @@ class Shopware_Controllers_Frontend_AdyenPaymentProcess extends Shopware_Control
         );
     }
 
+    /**
+     * @return void
+     *
+     * @throws Exception
+     */
     public function handleRedirectAction(): void
     {
         Logger::logDebug(
@@ -234,6 +265,12 @@ class Shopware_Controllers_Frontend_AdyenPaymentProcess extends Shopware_Control
         );
     }
 
+    /**
+     * @return void
+     *
+     * @throws Enlight_Exception
+     * @throws ConnectionSettingsNotFountException
+     */
     public function disableCardDetailsAction(): void
     {
         $this->Front()->Plugins()->ViewRenderer()->setNoRender();
@@ -281,7 +318,7 @@ class Shopware_Controllers_Frontend_AdyenPaymentProcess extends Shopware_Control
             $recurringToken
         );
 
-        $result = CheckoutAPI::get()->checkoutConfig(Shopware()->Shop()->getId())->disableStoredDetails($disableRequest);
+        $result = CheckoutAPI::get()->checkoutConfig(Shop::getShopId())->disableStoredDetails($disableRequest);
 
         if (!$result->isSuccessful()) {
             $this->Response()->setBody(
@@ -297,6 +334,13 @@ class Shopware_Controllers_Frontend_AdyenPaymentProcess extends Shopware_Control
         $this->Response()->setBody(json_encode(['success' => true]));
     }
 
+    /**
+     * @param array $additionalData
+     *
+     * @return string
+     *
+     * @throws Exception
+     */
     private function handleAdditionalDataAndGetRedirectUrl(array $additionalData): string
     {
         $basketSignature = $this->Request()->get('signature');
@@ -304,7 +348,9 @@ class Shopware_Controllers_Frontend_AdyenPaymentProcess extends Shopware_Control
         if ($basketSignature) {
             try {
                 $basket = $this->loadBasketFromSignature($basketSignature);
-                $this->verifyBasketSignature($basketSignature, $basket);
+                if (!empty($this->get('session')->get('sUserId'))) {
+                    $this->verifyBasketSignature($basketSignature, $basket);
+                }
             } catch (Exception $e) {
                 $this->errorMessageProvider->add(
                     $this->snippets->getNamespace('frontend/adyen/checkout')->get(
@@ -317,8 +363,37 @@ class Shopware_Controllers_Frontend_AdyenPaymentProcess extends Shopware_Control
             }
         }
 
+        /* @var CustomerService $customerService */
+        $customerService = ServiceRegister::getService(CustomerService::class);
+
+        if (!$customerService->isUserLoggedIn() && !empty($this->Request()->getParam('adyenEmail'))) {
+            $customer = $customerService->initializeCustomer($this->Request());
+
+            $this->front->Request()->setPost('email', $customer->getEmail());
+            $this->front->Request()->setPost('passwordMD5', $customer->getPassword());
+            Shopware()->Modules()->Admin()->sLogin(true);
+
+            Shopware()->Session()->offsetSet('sUserId', $customer->getId());
+            Shopware()->Session()->offsetSet('sUserMail', $customer->getEmail());
+            Shopware()->Session()->offsetSet('sUserGroup', $customer->getGroup()->getKey());
+            Shopware()->Session()->offsetSet('sUserPasswordChangeDate', $customer->getPasswordChangeDate()->format('Y-m-d H:i:s'));
+
+            /** @var Shopware_Controllers_Frontend_Checkout $checkoutController */
+            $checkoutController = Enlight_Class::Instance(Shopware_Controllers_Frontend_Checkout::class, [$this->request, $this->response]);
+            $checkoutController->init();
+            $checkoutController->setView($this->View());
+            $checkoutController->setContainer($this->container);
+            $checkoutController->setFront($this->front);
+            $checkoutController->setRequest($this->request);
+            $checkoutController->setResponse($this->response);
+            $checkoutController->preDispatch();
+            $checkoutController->confirmAction();
+        } elseif (!empty($this->Request()->getParam('adyenEmail'))) {
+            $customerService->initializeCustomer($this->Request());
+        }
+
         $response = CheckoutAPI::get()
-            ->paymentRequest(Shopware()->Shop()->getId())
+            ->paymentRequest(Shop::getShopId())
             ->updatePaymentDetails(array_key_exists('details', $additionalData) ? $additionalData : ['details' => $additionalData]);
 
         if (!$response->isSuccessful()) {
@@ -342,6 +417,14 @@ class Shopware_Controllers_Frontend_AdyenPaymentProcess extends Shopware_Control
         return Url::getFrontUrl('checkout', 'finish', ['sUniqueID' => $orderReference]);
     }
 
+    /**
+     * @param string $redirectUrl
+     *
+     * @return void
+     *
+     * @throws Enlight_Exception
+     * @throws Exception
+     */
     private function setupRedirectResponse(string $redirectUrl)
     {
         if ($this->isAjaxRequest()) {
@@ -356,11 +439,19 @@ class Shopware_Controllers_Frontend_AdyenPaymentProcess extends Shopware_Control
         $this->redirect($redirectUrl);
     }
 
-    private function isAjaxRequest()
+    /**
+     * @return bool
+     */
+    private function isAjaxRequest(): bool
     {
         return $this->Request()->getParam('isXHR') || $this->session->offsetGet('adyenIsXHR');
     }
 
+    /**
+     * @param string $basketSignature
+     *
+     * @return string
+     */
     private function generateOrderReference(string $basketSignature): string
     {
         /**
@@ -384,6 +475,6 @@ class Shopware_Controllers_Frontend_AdyenPaymentProcess extends Shopware_Control
             return null;
         }
 
-        return ShopperReference::parse($shop->getHost() . '_' . $shop->getId() . '_' . $user);
+        return ShopperReference::parse($shop->getHost() . '_' . Shop::getShopId() . '_' . $user);
     }
 }
