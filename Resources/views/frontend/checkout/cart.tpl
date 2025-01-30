@@ -24,6 +24,13 @@
                             <form data-adyen-express-checkout-form method="post" action="{url controller=AdyenExpressCheckout action=finish}" class="buybox--form">
                                 <input type="hidden" name="adyen_payment_method" value="{$adyenPaymentMethodType}"/>
                                 <input type="hidden" name="adyenExpressPaymentMethodStateData">
+                                <input type="hidden" name="adyenShippingAddress">
+                                <input type="hidden" name="adyenBillingAddress">
+                                <input type="hidden" name="adyenEmail">
+
+                                {if $userLoggedIn}
+                                    <input type="hidden" name="adyenLoggedIn">
+                                {/if}
 
                                 <div
                                         data-checkoutConfigUrl="{url
@@ -33,7 +40,9 @@
                                         }"
                                         data-additionalDataUrl="{url module='frontend' controller='AdyenPaymentProcess' action='handleAdditionalData'}"
                                         data-adyenPaymentMethodType="{$adyenPaymentMethodType}"
-                                        data-adyen-express-checkout>
+                                        data-adyen-express-checkout
+                                        data-paypalUpdateOrder="{url module='frontend' controller='AdyenExpressCheckout' action='paypalUpdateOrder'}"
+                                >
                                 </div>
                             </form>
                         {/foreach}

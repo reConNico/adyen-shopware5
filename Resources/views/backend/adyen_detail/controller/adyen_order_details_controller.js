@@ -17,37 +17,50 @@ Ext.define('Shopware.apps.AdyenTransaction.controller.OrderDetailsController', {
             generateLinkBtn = Ext.WindowManager.getActive().down('#adyenGeneratePaymentLinkBtn'),
             copyLinkBtn = Ext.WindowManager.getActive().down('#adyenCopyPaymentLinkBtn'),
             generateLinkNonAdyenOrderBtn = Ext.WindowManager.getActive().down('#adyenGeneratePaymentLinkNonAdyenOrderBtn'),
-            copyLinkNonAdyenOrderBtn = Ext.WindowManager.getActive().down('#adyenCopyPaymentLinkNonAdyenOrderBtn');
+            copyLinkNonAdyenOrderBtn = Ext.WindowManager.getActive().down('#adyenCopyPaymentLinkNonAdyenOrderBtn'),
+            extendAuthorizationPeriodBtm = Ext.WindowManager.getActive().down('#adyenExtendAuthorizationBtn');
 
         // me.callParent will execute the init function of the overridden controller
         me.callParent(arguments);
 
-        if (cancelBtn !== null && !cancelBtn.hasListener('click')) {
+        if (cancelBtn !== null && !cancelBtn.adyenClickAttached) {
             cancelBtn.on('click', me.cancel.bind(me));
+            cancelBtn.adyenClickAttached = true;
         }
 
-        if (captureBtn !== null && !captureBtn.hasListener('click')) {
+        if (captureBtn !== null && !captureBtn.adyenClickAttached) {
             captureBtn.on('click', me.capture.bind(me));
+            captureBtn.adyenClickAttached = true;
         }
 
-        if (refundBtn !== null && !refundBtn.hasListener('click')) {
+        if (refundBtn !== null && !refundBtn.adyenClickAttached) {
             refundBtn.on('click', me.refund.bind(me));
+            refundBtn.adyenClickAttached = true;
         }
 
-        if (generateLinkBtn !== null && !generateLinkBtn.hasListener('click')) {
+        if (generateLinkBtn !== null && !generateLinkBtn.adyenClickAttached) {
             generateLinkBtn.on('click', me.generatePaymentLink.bind(me));
+            generateLinkBtn.adyenClickAttached = true;
         }
 
-        if (copyLinkBtn !== null && !copyLinkBtn.hasListener('click')) {
+        if (copyLinkBtn !== null && !copyLinkBtn.adyenClickAttached) {
             copyLinkBtn.on('click', me.copyPaymentLink.bind(me));
+            copyLinkBtn.adyenClickAttached = true;
         }
 
-        if (generateLinkNonAdyenOrderBtn !== null && !generateLinkNonAdyenOrderBtn.hasListener('click')) {
+        if (generateLinkNonAdyenOrderBtn !== null && !generateLinkNonAdyenOrderBtn.adyenClickAttached) {
             generateLinkNonAdyenOrderBtn.on('click', me.generateLinkNonAdyenOrder.bind(me));
+            generateLinkNonAdyenOrderBtn.adyenClickAttached = true;
         }
 
-        if (copyLinkNonAdyenOrderBtn !== null && !copyLinkNonAdyenOrderBtn.hasListener('click')) {
+        if (copyLinkNonAdyenOrderBtn !== null && !copyLinkNonAdyenOrderBtn.adyenClickAttached) {
             copyLinkNonAdyenOrderBtn.on('click', me.copyLinkNonAdyenOrder.bind(me));
+            copyLinkNonAdyenOrderBtn.adyenClickAttached = true;
+        }
+
+        if (extendAuthorizationPeriodBtm !== null && !extendAuthorizationPeriodBtm.adyenClickAttached) {
+            extendAuthorizationPeriodBtm.on('click', me.extendAuthorization.bind(me));
+            extendAuthorizationPeriodBtm.adyenClickAttached = true;
         }
     },
 
@@ -252,6 +265,37 @@ Ext.define('Shopware.apps.AdyenTransaction.controller.OrderDetailsController', {
     copyLinkNonAdyenOrder: function () {
         navigator.clipboard.writeText(Ext.WindowManager.getActive().down('#adyenPaymentLinkNonAdyenOrderField').getValue())
     },
+
+    extendAuthorization: function () {
+        let merchantReference = Ext.WindowManager.getActive().down('#adyenMerchantReference'),
+            storeId = Ext.WindowManager.getActive().down('#adyenStoreId'),
+            tab = Ext.WindowManager.getActive().down('#adyen-tab'),
+            me = this;
+
+        me.loadingMask = new Ext.LoadMask(tab);
+        me.loadingMask.show();
+
+        Ext.Ajax.request({
+            method: 'GET',
+            url: '{url controller=AdyenMerchantActions action="extendAuthorization"}',
+            params: {
+                merchantReference: merchantReference.getValue(),
+                storeId: storeId.getValue()
+            },
+            success: function () {
+                me.refreshTable(merchantReference, storeId);
+            },
+            failure: function (response, options) {
+                me.refreshTable(merchantReference, storeId);
+                Shopware.Notification.createStickyGrowlMessage({
+                    title: Ext.String.format(
+                        "{s name='notification/adyen/header'}You have new Adyen notifications {/s}",
+                    ),
+                    text: "{s name='notification/adyen/message'}" + response.responseText + "{/s}",
+                })
+            }
+        });
+    }
 });
 
 //{/block}

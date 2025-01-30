@@ -9,6 +9,7 @@ use Adyen\Core\BusinessLogic\Domain\Checkout\PaymentRequest\Models\PaymentMethod
 use Adyen\Core\BusinessLogic\Domain\Payment\Models\PaymentMethod;
 use AdyenPayment\AdyenPayment;
 use AdyenPayment\Utilities\Plugin;
+use AdyenPayment\Utilities\Shop;
 use DateTime;
 use Shopware_Components_Snippet_Manager;
 
@@ -49,8 +50,7 @@ class PaymentMeansEnricher
      */
     public function enrich(array $paymentMeans): array
     {
-        if (AdminAPI::get()->integration(Shopware()->Shop()->getId())->getState()->toArray(
-            ) !== StateResponse::dashboard()->toArray()) {
+        if (AdminAPI::get()->integration(Shop::getShopId())->getState()->toArray() !== StateResponse::dashboard()->toArray()) {
             $this->removeAdyenPaymentMeans($paymentMeans);
 
             return $paymentMeans;
@@ -104,7 +104,7 @@ class PaymentMeansEnricher
         $currencyFactor = Shopware()->Shop()->getCurrency()->getFactor();
 
         return array_map(
-            static function (array $paymentMean) use (
+            function (array $paymentMean) use (
                 $totalProductsAmount,
                 $currencyFactor,
                 $paymentMethodConfigsMap
@@ -128,6 +128,7 @@ class PaymentMeansEnricher
                     );
                     $paymentMean['surchargeLimit'] = self::calculateSurchargeLimit($paymentMethod);
                 }
+                $paymentMean['clickToPayLabel'] = $this->getClickToPayLabel();
 
                 return $paymentMean;
             },
@@ -252,6 +253,7 @@ class PaymentMeansEnricher
                             ),
                         $paymentMethodResponse->getMetaData()['lastFour']
                     ),
+                    'clickToPayLabel' => $this->getClickToPayLabel()
                 ];
 
                 if (array_key_exists($paymentMean['adyenPaymentType'], $paymentMethodConfigsMap)) {
@@ -294,22 +296,18 @@ class PaymentMeansEnricher
                 $paymentMean = [
                     'isAdyenPaymentMethod' => true,
                     'isStoredPaymentMethod' => true,
-                    'storedPaymentMethodId' => $paymentMethodResponse->getMetaData(
-                    )['RecurringDetail']['recurringDetailReference'],
+                    'storedPaymentMethodId' => $paymentMethodResponse->getMetaData()['id'],
                     'adyenPaymentType' => $paymentMethodResponse->getType(),
                     'description' => $shopwareMean['description'],
-                    'additionaldescription' => sprintf(
+                    'additionaldescription' =>
                         $this->snippets
                             ->getNamespace('frontend/adyen/checkout')
                             ->get(
                                 'payment/adyen/recurring_methods_title',
-                                'Created on: %s',
+                                'Recurring payment method',
                                 true
                             ),
-                        (new DateTime(
-                            $paymentMethodResponse->getMetaData()['RecurringDetail']['creationDate']
-                        ))->format('Y-m-d')
-                    ),
+                    'clickToPayLabel' => $this->getClickToPayLabel()
                 ];
 
                 if (array_key_exists($paymentMean['adyenPaymentType'], $paymentMethodConfigsMap)) {
@@ -440,5 +438,19 @@ class PaymentMeansEnricher
                 unset($paymentMeans[$key]);
             }
         }
+    }
+
+    /**
+     * @return string
+     */
+    private function getClickToPayLabel(): string
+    {
+        return $this->snippets
+            ->getNamespace('frontend/adyen/checkout')
+            ->get(
+                'payment/adyen/click_to_pay_label',
+                'Finish payment by saved Credit Card',
+                true
+            );
     }
 }

@@ -195,7 +195,7 @@ if (!window.AdyenFE) {
 
         const handleOnOptionChange = (listItem, storeId) => {
             hiddenInput.value = storeId;
-            updateTextOnChange && (switchButton.firstElementChild.innerHTML = listItem.innerText);
+            updateTextOnChange && (switchButton.firstElementChild.textContent = listItem.innerText);
             list.classList.remove('adls--show');
 
             listItems.forEach((li) => li.classList.remove('adls--selected'));
@@ -336,7 +336,8 @@ if (!window.AdyenFE) {
                 props.checked = 'checked';
             }
 
-            label.append(createElement('input', className, '', props), createElement('span', '', option.label));
+            label.append(createElement('input', className, '', props), createElement('span', '', option.label,
+                { dataset: { value: option.value } }));
             wrapper.append(label);
             onChange && label.addEventListener('click', () => onChange(option.value));
         });
@@ -596,6 +597,7 @@ if (!window.AdyenFE) {
                 }),
                 createButton({
                     type: 'primary',
+                    name: 'saveChangesButton',
                     className: 'adlp-save',
                     label: 'general.saveChanges',
                     onClick: onSave,

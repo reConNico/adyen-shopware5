@@ -27,6 +27,7 @@ Ext.define('Shopware.apps.AdyenTransaction.AdyenOrderDetailData', {
             me.query('#adyenPaymentMethod')[0].setSrc(me.record.get('paymentMethod'));
             me.query('#captureCurrency')[0].setValue(me.record.get('amountCurrency'));
             me.query('#refundCurrency')[0].setValue(me.record.get('amountCurrency'));
+            me.query('#authorizationAdjustmentAmount')[0].setValue(me.record.get('authorizationAdjustmentAmount'));
 
             if (!me.record.get('captureSupported') || (parseFloat(me.record.get('capturableAmount')) === 0)) {
                 me.query('#adyenCaptureToolbar')[0].hide();
@@ -82,6 +83,20 @@ Ext.define('Shopware.apps.AdyenTransaction.AdyenOrderDetailData', {
                 me.query('#adyenPaymentLinkToolbar')[0].show();
                 me.query('#adyenPaymentLinkField')[0].show();
                 me.query('#adyenCopyPaymentLinkBtn')[0].show();
+            }
+
+            if (!me.record.get('authorizationAdjustmentAvailable')) {
+                me.query('#adyenExtendAuthorizationPeriodToolbar')[0].hide();
+            }
+
+            if(!me.record.get('authorizationAdjustmentDate') || !me.record.get('authorizationAdjustmentAvailable')) {
+                me.query('#authorizationAdjustmentDateId')[0].hide();
+            }
+
+            if(!me.record.get('authorizationAdjustmentAmount') || !me.record.get('authorizationAdjustmentAvailable')) {
+                me.query('#authorizationAdjustmentAmount')[0].hide();
+            } else {
+                me.query('#authorizationAdjustmentAmount')[0].show();
             }
         });
 
@@ -193,6 +208,23 @@ Ext.define('Shopware.apps.AdyenTransaction.AdyenOrderDetailData', {
                         text: 'Capture',
                         margin: '10 0 0 0',
                         width: 105
+                    }
+                ]
+            },
+            {
+                xtype: 'toolbar',
+                itemId: 'adyenExtendAuthorizationPeriodToolbar',
+                style: {
+                    'background-color': 'rgb(240, 242, 244)'
+                },
+                items: [
+                    {
+                        action: 'extendAuthorizationPeriod',
+                        xtype: 'button',
+                        itemId: 'adyenExtendAuthorizationBtn',
+                        cls: 'primary',
+                        text: '{s name="payment/adyen/detail/extendauthorization"}Extend authorization expiry period{/s}',
+                        margin: '10 0 0 0'
                     }
                 ]
             },
@@ -333,6 +365,16 @@ Ext.define('Shopware.apps.AdyenTransaction.AdyenOrderDetailData', {
             { name: 'paidAmount', fieldLabel: '{s name="payment/adyen/detail/paidamount"}Paid amount{/s}'},
             { name: 'refundedAmount', fieldLabel: '{s name="payment/adyen/detail/refundedamount"}Refunded amount{/s}'},
             {
+                name: 'authorizationAdjustmentDate',
+                itemId: 'authorizationAdjustmentDateId',
+                fieldLabel: '{s name="payment/adyen/detail/authorizationadjustmentdata"}Authorization adjustment date{/s}'
+            },
+            {
+                name: 'authorizationAdjustmentAmount',
+                itemId: 'authorizationAdjustmentAmount',
+                fieldLabel: '{s name="payment/adyen/detail/authorizationadjustmentamount"}Initial authorization amount{/s}'
+            },
+            {
                 xtype: 'hidden',
                 itemId: 'adyenMerchantReference',
                 name: 'merchantReference'
@@ -346,7 +388,7 @@ Ext.define('Shopware.apps.AdyenTransaction.AdyenOrderDetailData', {
                 xtype: 'hidden',
                 itemId: 'adyenCurrencyIso',
                 name: 'currencyIso'
-            }
+            },
         ];
     },
 });

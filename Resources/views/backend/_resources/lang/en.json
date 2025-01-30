@@ -286,6 +286,13 @@
           "errorSize": "The selected file exceeds the limit of 10MB.",
           "placeholder": "Drop image or click here to upload"
         },
+        "authorizationType": {
+          "label": "Authorization type",
+          "description": "You can set payment requests to be handled as either a pre-authorization or a final authorization. In case of final authorization the amount is final and can not be modified. Pre-authorization allows you to adjust amount or extend expiry period and capture type is always manual.",
+          "placeholder": "Select Authorization type",
+          "preAuthorization": "Pre-authorization",
+          "finalAuthorization": "Final authorization"
+        },
         "creditCardFields": {
           "showLogos": {
             "label": "Show credit card logos",
@@ -294,6 +301,10 @@
           "singleClickPayment": {
             "label": "Enable single click payments",
             "description": "Do you want shoppers to have the option to save their card details for future payments?"
+          },
+          "clickToPay": {
+            "label": "Enable Click to Pay",
+            "description": "Do you want shoppers to have the option to use Click to Pay? <a href=\"https://www.adyen.com/knowledge-hub/click-to-pay\" target=\"_blank\"><span>Learn more</span></a>"
           },
           "sendBasket": {
             "label": "Enable L2/L3 data",
@@ -472,17 +483,12 @@
       "fields": {
         "inProgress": {
           "label": "In progress",
-          "description": "The Adyen payment status <strong>In progress</strong> should represent the following shop status:",
-          "placeholder": "Select status"
-        },
-        "pending": {
-          "label": "Pending",
-          "description": "The Adyen payment status <strong>Pending</strong> should represent the following shop status:",
+          "description": "The Adyen payment status <strong>In progress</strong>. This status is assigned when an order is initially created during the checkout process. Should represent the following shop status:",
           "placeholder": "Select status"
         },
         "paid": {
           "label": "Paid",
-          "description": "The Adyen payment status <strong>Paid</strong> should represent the following shop status:",
+          "description": "The Adyen payment status <strong>Paid</strong>. This status is assigned when an order is authorised on Adyen. Should represent the following shop status:",
           "placeholder": "Select status"
         },
         "failed": {
@@ -503,11 +509,6 @@
         "partiallyRefunded": {
           "label": "Partially refunded",
           "description": "The Adyen payment status <strong>Partially refunded</strong> should represent the following shop status:",
-          "placeholder": "Select status"
-        },
-        "new": {
-          "label": "New",
-          "description": "The Adyen payment status <strong>New</strong> should represent the following shop status:",
           "placeholder": "Select status"
         },
         "chargeBack": {
@@ -644,7 +645,15 @@
         "successfulRefundEventMessage": "Payment has been refunded successfully on Adyen.",
         "successfulRefundEventDetails": "Payment has been refunded successfully on Adyen.",
         "successfulRefundRequestEventMessage": "Refund request has been sent to Adyen.",
-        "successfulRefundRequestEventDetails": "Refund request has been sent to Adyen."
+        "successfulRefundRequestEventDetails": "Refund request has been sent to Adyen.",
+        "successfulAuthorizationAdjustmentEventMessage": "Payment has been successfully adjusted on Adyen.",
+        "successfulAuthorizationAdjustmentEventDetails": "Payment has been successfully adjusted on Adyen.",
+        "successfulAuthorizationAdjustmentRequestEventMessage": "Authorization adjustment request has been sent successfully to Adyen.",
+        "successfulAuthorizationAdjustmentRequestEventDetails": "Authorization adjustment request has been sent successfully to Adyen.",
+        "failedAuthorizationAdjustmentEventMessage": "Authorization adjustment failed on Adyen.",
+        "failedAuthorizationAdjustmentEventDetails": "Authorization adjustment failed on Adyen.",
+        "failedAuthorizationAdjustmentRequestMessage": "Authorization adjustment request failed.",
+        "failedAuthorizationAdjustmentRequestDetails": "Authorization adjustment request failed."
       }
     },
     "webhook": {

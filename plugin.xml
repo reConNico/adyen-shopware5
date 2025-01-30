@@ -4,7 +4,7 @@
 
     <label>Adyen Shopware Plugin</label>
     <label lang="de">Adyen Shopware Plugin</label>
-    <version>4.1.5</version>
+    <version>4.2.1</version>
     <copyright>Adyen</copyright>
     <author>Adyen</author>
     <link>https://adyen.com</link>
@@ -683,6 +683,88 @@
         <changes lang="de">
             * Update core to version 1.1.6
             * Update order exist check
+        </changes>
+    </changelog>
+    <changelog version="4.1.6">
+        <changes lang="en">
+            * Fix displaying original PSP reference on order details page
+        </changes>
+        <changes lang="de">
+            * Fix displaying original PSP reference on order details page
+        </changes>
+    </changelog>
+    <changelog version="4.1.7">
+        <changes lang="en">
+            * Add support for language shops
+            * Wake Task runner when Adyen page is opened
+        </changes>
+        <changes lang="de">
+            * Add support for language shops
+            * Wake Task runner when Adyen page is opened
+        </changes>
+    </changelog>
+    <changelog version="4.1.8">
+        <changes lang="en">
+            * Fix Apple pay payments processing
+            * Update core version to 1.1.10
+        </changes>
+        <changes lang="de">
+            * Fix Apple pay payments processing
+            * Update core version to 1.1.10
+        </changes>
+    </changelog>
+    <changelog version="4.1.9">
+        <changes lang="en">
+            * Remove 'New' and 'Pending' order status from Order status mapping
+            * Update core version to 1.1.11
+            * Fix Adyen button listeners on order details page
+        </changes>
+        <changes lang="de">
+            * Remove 'New' and 'Pending' order status from Order status mapping
+            * Update core version to 1.1.11
+            * Fix Adyen button listeners on order details page
+        </changes>
+    </changelog>
+    <changelog version="4.1.10">
+        <changes lang="en">
+            * Fix payment method disabling when plugin is uninstalled or payment method is deleted in plugin.
+            * Update core version to 1.1.12
+        </changes>
+        <changes lang="de">
+            * Fix payment method disabling when plugin is uninstalled or payment method is deleted in plugin.
+            * Update core version to 1.1.12
+        </changes>
+    </changelog>
+    <changelog version="4.1.11">
+        <changes lang="en">
+            * Fix to always use https for the store domain
+            * Update core version to 1.1.13
+            * Fix order status transition when failed authorization webhook is received
+        </changes>
+        <changes lang="de">
+            * Fix to always use https for the store domain
+            * Update core version to 1.1.13
+            * Fix order status transition when failed authorization webhook is received
+        </changes>
+    </changelog>
+    <changelog version="4.2.0">
+        <changes lang="en">
+            * Add support for authorization adjustment
+            * Add support for click to pay
+            * Add support for GooglePay and ApplePay guest express checkout
+        </changes>
+        <changes lang="de">
+            * Add support for authorization adjustment
+            * Add support for click to pay
+            * Add support for GooglePay and ApplePay guest express checkout
+        </changes>
+    </changelog>
+    <changelog version="4.2.1">
+        <changes lang="en">
+            * Fix ordering with voucher code
+        </changes>
+        <changes lang="de">
+            * Fix ordering with voucher code
         </changes>
     </changelog>
 </plugin>
