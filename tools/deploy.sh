@@ -1,4 +1,4 @@
-#!/bin/bash
+
 
 # Cleanup any leftovers
 rm -f ./tools/AdyenPayment.zip
@@ -32,7 +32,9 @@ rm -fR /tmp/Adyen/deploy/AdyenPayment/grumphp.yml.dist
 rm -fR /tmp/Adyen/deploy/AdyenPayment/phpcs.xml
 rm -fR /tmp/Adyen/deploy/AdyenPayment/phpunit.xml.dist
 rm -fR /tmp/Adyen/deploy/AdyenPayment/psalm.xml.dist
-
+rm -fR /tmp/Adyen/deploy/AdyenPayment/E2ETest
+rm -fR /tmp/Adyen/deploy/AdyenPayment/Controllers/Frontend/AdyenTest.php
+rm -fR /tmp/Adyen/deploy/AdyenPayment/vendor/adyen/integration-core/src/BusinessLogic/E2ETest
 # Create plugin archive
 echo "Reading plugin archive version from plugin.xml file..."
 version=$(grep -oPm1 "(?<=<version>)[^<]+" ./plugin.xml)

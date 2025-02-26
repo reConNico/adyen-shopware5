@@ -28,7 +28,10 @@ Ext.define('Shopware.apps.AdyenTransaction.model.Transaction', {
         { name: 'refundableAmount', type: 'string'},
         { name: 'cancelSupported', type: 'boolean'},
         { name: 'paymentLink', type: 'string'},
-        { name: 'displayPaymentLink', type: 'boolean'}
+        { name: 'displayPaymentLink', type: 'boolean'},
+        { name: 'authorizationAdjustmentAvailable', type: 'boolean'},
+        { name: 'authorizationAdjustmentDate', type: 'date'},
+        { name: 'authorizationAdjustmentAmount', type: 'float'},
     ]
 });
 //{/block}

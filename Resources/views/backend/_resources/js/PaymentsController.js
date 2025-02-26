@@ -55,7 +55,8 @@ if (!window.AdyenFE) {
         trustly: 'trustly',
         twint: 'twint',
         vipps: 'vipps',
-        alma: 'alma'
+        alma: 'alma',
+        bizum: 'bizum'
     };
 
     const methodTypes = [
@@ -241,7 +242,8 @@ if (!window.AdyenFE) {
         'twint',
         'paysafecard',
         'bcmc_mobile',
-        'alma'
+        'alma',
+        'bizum'
     ];
 
     const supportsRecurringPayments = [
@@ -258,10 +260,13 @@ if (!window.AdyenFE) {
         'directEbanking'
     ];
 
+    const supportsAuthorizationType = ['scheme'];
+
     /**
      * @typedef AdditionalDataConfig
      * @property {boolean?} showLogos
      * @property {boolean?} singleClickPayment
+     * @property {boolean?} clickToPay
      * @property {boolean?} sendBasket
      * @property {boolean?} installments
      * @property {boolean?} installmentAmounts
@@ -284,6 +289,7 @@ if (!window.AdyenFE) {
      * @property {boolean} excludeFromPayByLink
      * @property {boolean} enableTokenization
      * @property {string} tokenType
+     * @property {string} authorizationType
      * @property {string} methodId
      * @property {string} code
      * @property {string?} name
@@ -514,11 +520,13 @@ if (!window.AdyenFE) {
             page.append(
                 generator.createElement('div', 'adl-payment-methods-header', '', null, [
                     generator.createElement('div', '', '', null, [
-                        generator.createElement('h2', '', 'payments.active.title'),
+                        generator.createElement('h2', 'adlp-main-title', 'payments.active.title',
+                            {dataset: {heading:  "active-payment-methods"}}),
                         generator.createElement('p', '', 'payments.active.description')
                     ]),
                     generator.createButton({
                         type: 'primary',
+                        name: 'addMethodsButton',
                         className: 'adlp-add-methods-button',
                         label: 'payments.active.addMethod',
                         onClick: () => switchPage(renderChooseMethodPage)
@@ -642,7 +650,8 @@ if (!window.AdyenFE) {
                                 size: 'small',
                                 className: 'adlt--add-button adlm--blue adlm--no-wrap',
                                 label: 'payments.list.actionsAdd',
-                                onClick: () => switchPage(() => renderPaymentConfigForm(method))
+                                onClick: () => switchPage(() => renderPaymentConfigForm(method)),
+                                dataset: { code: method.code }
                             })
                         );
                     })
@@ -785,6 +794,7 @@ if (!window.AdyenFE) {
                 config.additionalData = {
                     showLogos: true,
                     singleClickPayment: true,
+                    clickToPay: true,
                     sendBasket: true,
                     installments: false,
                     installmentAmounts: false,
@@ -1019,6 +1029,21 @@ if (!window.AdyenFE) {
                             error: 'payments.configure.fields.surchargeLimit.error'
                         },
                         {
+                            name: 'authorizationType',
+                            value: changedMethod.authorizationType,
+                            type: 'dropdown',
+                            label: 'payments.configure.fields.authorizationType.label',
+                            description: 'payments.configure.fields.authorizationType.description',
+                            placeholder: 'payments.configure.fields.authorizationType.placeholder',
+                            options: [
+                                {label: 'payments.configure.fields.authorizationType.preAuthorization', value: 'PreAuth'},
+                                {label: 'payments.configure.fields.authorizationType.finalAuthorization', value: 'FinalAuth'}
+                            ],
+                            className: !supportsAuthorizationType.some((item) => item === changedMethod.code)
+                                ? 'adls--hidden'
+                                : ''
+                        },
+                        {
                             name: 'excludeFromPayByLink',
                             value: changedMethod.excludeFromPayByLink,
                             type: 'checkbox',
@@ -1083,6 +1108,7 @@ if (!window.AdyenFE) {
                 ...generator.createFormFields([
                     getRadioField('creditCardFields', 'showLogos'),
                     getRadioField('creditCardFields', 'singleClickPayment'),
+                    getRadioField('creditCardFields', 'clickToPay'),
                     getRadioField('creditCardFields', 'sendBasket')
                 ])
             );
@@ -1385,6 +1411,7 @@ if (!window.AdyenFE) {
                     'description',
                     'showLogos',
                     'singleClickPayment',
+                    'clickToPay',
                     'merchantName',
                     'sendBasket',
                     'gatewayMerchantId',
@@ -1589,7 +1616,7 @@ if (!window.AdyenFE) {
 
             if (changedMethod.paymentType === 'creditOrDebitCard') {
                 result.push(
-                    ...validateRequiredField(['showLogos', 'singleClickPayment', 'sendBasket', 'installmentAmounts'])
+                    ...validateRequiredField(['showLogos', 'singleClickPayment', 'clickToPay', 'sendBasket', 'installmentAmounts'])
                 );
             } else if (changedMethod.code === 'applepay') {
                 result.push(...validateRequiredField(['merchantId', 'merchantName']));

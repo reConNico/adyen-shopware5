@@ -7,7 +7,6 @@ namespace AdyenPayment\Subscriber;
 use Enlight\Event\SubscriberInterface;
 use Enlight_Components_Session_Namespace;
 use Enlight_Event_EventArgs;
-use Shopware\Models\Customer\Customer;
 
 /**
  * Class AddExpressCheckoutToView
@@ -35,7 +34,7 @@ final class AddExpressCheckoutToView implements SubscriberInterface
 
     public function handleProductDetailsPage(Enlight_Event_EventArgs $args): void
     {
-        if (!$this->isUserLoggedIn() || $args->getRequest()->getActionName() !== 'index') {
+        if ($args->getRequest()->getActionName() !== 'index') {
             return;
         }
 
@@ -46,29 +45,12 @@ final class AddExpressCheckoutToView implements SubscriberInterface
 
     public function handleCartPage(Enlight_Event_EventArgs $args): void
     {
-        if (!$this->isUserLoggedIn() || $args->getRequest()->getActionName() !== 'cart') {
+        if ($args->getRequest()->getActionName() !== 'cart') {
             return;
         }
 
         $args->getSubject()->View()->assign(
             'adyenShowExpressCheckout', true
         );
-    }
-
-    private function isUserLoggedIn(): bool
-    {
-        if (!(bool)$this->session->get('sUserId')) {
-            return false;
-        }
-
-        $userData = Shopware()->Modules()->Admin()->sGetUserData();
-        if (
-            !empty($userData['additional']['user']['accountmode']) &&
-            (int)$userData['additional']['user']['accountmode'] === Customer::ACCOUNT_MODE_FAST_LOGIN
-        ) {
-            return false;
-        }
-
-        return true;
     }
 }

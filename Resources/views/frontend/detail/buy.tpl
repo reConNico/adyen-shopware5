@@ -12,12 +12,25 @@
                     <input type="hidden" name="adyen_payment_method" value="{$adyenPpaymentMethodType}"/>
                     <input type="hidden" name="adyen_article_number" value="{$sArticle.ordernumber}"/>
                     <input type="hidden" name="adyenExpressPaymentMethodStateData">
+                    <input type="hidden" name="adyenShippingAddress">
+                    <input type="hidden" name="adyenBillingAddress">
+                    <input type="hidden" name="adyenEmail">
+
+                    {if $userLoggedIn}
+                        <input type="hidden" name="adyenLoggedIn">
+                    {/if}
 
                     <div
                             data-checkoutConfigUrl="{url
                             module='frontend'
                             controller='AdyenExpressCheckout'
                             action='getCheckoutConfig'
+                            adyen_article_number="{$sArticle.ordernumber}"
+                            }"
+                            data-paypalUpdateOrder="{url
+                            module='frontend'
+                            controller='AdyenExpressCheckout'
+                            action='paypalUpdateOrder'
                             adyen_article_number="{$sArticle.ordernumber}"
                             }"
                             data-additionalDataUrl="{url module='frontend' controller='AdyenPaymentProcess' action='handleAdditionalData'}"

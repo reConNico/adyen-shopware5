@@ -17,7 +17,8 @@
             paymentMethodBlockSelector: '.payment--method.block',
             paymentMethodComponentContainerSelector: '.method--bankdata',
             updatePaymentInfoButtonClass: 'method--change-info',
-            updatePaymentInfoButtonText: 'Update your payment information'
+            updatePaymentInfoButtonText: 'Update your payment information',
+            clickToPayUrl: '#adyenClickToPayUrl'
         },
 
         checkoutController: null,
@@ -31,7 +32,8 @@
             me.checkoutController = new AdyenComponents.CheckoutController({
                 "checkoutConfigUrl": me.opts.checkoutConfigUrl,
                 "sessionStorage": StorageManager.getStorage('session'),
-                "onStateChange": $.proxy(me.updateFormSubmitButton, me)
+                "onStateChange": $.proxy(me.updateFormSubmitButton, me),
+                "onClickToPay": $.proxy(me.handleClickToPay, me),
             });
 
             $(document).on('submit', me.opts.formSelector, $.proxy(me.onPaymentFormSubmit, me));
@@ -67,8 +69,8 @@
             let adyenPaymentMethodType = selectedPaymentMeanEl.data("adyen-payment-method-type");
 
             let componentContainerEl = selectedPaymentMeanEl
-            .closest(me.opts.paymentMethodBlockSelector)
-            .find(me.opts.paymentMethodComponentContainerSelector);
+                .closest(me.opts.paymentMethodBlockSelector)
+                .find(me.opts.paymentMethodComponentContainerSelector);
 
             if (1 === componentContainerEl.length) {
                 me.checkoutController.mount(
@@ -172,6 +174,31 @@
                 });
 
             componentContainerEl.append(updatePaymentInfoButton);
+        },
+
+        handleClickToPay: function () {
+            let me = this;
+
+            var url = $(me.opts.clickToPayUrl)[0].value;
+            $.ajax({
+                type: "POST",
+                url: url + '?isXHR=1',
+                data: {
+                    adyen_payment_method: 'scheme',
+                    adyenExpressPaymentMethodStateData: me.checkoutController.getPaymentMethodStateData()
+                },
+                success: function(data) {
+                    if (data.nextStepUrl) {
+                        window.location.href = data.nextStepUrl;
+                        return;
+                    }
+
+                    window.location.href = me.opts.checkoutShippingPaymentUrl;
+                },
+                error: function(data) {
+                    window.location.href = me.opts.checkoutShippingPaymentUrl;
+                }
+            });
         }
     });
 

@@ -56,51 +56,165 @@
      * @param {{
      * checkoutConfigUrl: string,
      * showPayButton: boolean,
+     * requireAddress: boolean,
+     * requireEmail: boolean,
      * sessionStorage: sessionStorage,
      * onStateChange: function|undefined,
      * onAdditionalDetails: function|undefined,
+     * onAuthorized: function|undefined,
+     * onPaymentAuthorized: function|undefined,
+     * onApplePayPaymentAuthorized: function|undefined,
+     * onShippingContactSelected: function|undefined,
+     * onPaymentDataChanged: function|undefined,
+     * onShopperDetails: function|undefined,
      * onPayButtonClick: function|undefined,
+     * onClickToPay: function|undefined,
+     * onShippingAddressChanged: function|undefined
      * }} config
      */
     function CheckoutController(config) {
         const url = new URL(location.href);
+        let clickToPayHandled = false;
+
         if (url.hostname === devOnlyConfig.localShopDomain && devOnlyConfig.globalReplacementDomain) {
             url.hostname = devOnlyConfig.globalReplacementDomain;
             url.protocol = 'https:';
         }
 
-        config.onStateChange = config.onStateChange || function () {};
-        config.onAdditionalDetails = config.onAdditionalDetails || function () {};
-        config.onPayButtonClick = config.onPayButtonClick || function (resolve, reject) { resolve(); };
+        config.requireAddress = config.requireAddress || false;
+
+        config.requireEmail = config.requireEmail || false;
+
+        config.onStateChange = config.onStateChange || function () {
+        };
+        config.onAdditionalDetails = config.onAdditionalDetails || function () {
+        };
+        config.onAuthorized = config.onAuthorized || function () {
+        };
+        config.onPaymentAuthorized = config.onPaymentAuthorized || function () {
+            return new Promise(function (resolve, reject) {
+                resolve({transactionState: 'SUCCESS'});
+            });
+        };
+        config.onPaymentDataChanged = config.onPaymentDataChanged || function () {
+            return new Promise(async resolve => {
+                resolve({});
+            });
+        };
+        config.onApplePayPaymentAuthorized = config.onApplePayPaymentAuthorized || function (resolve, reject, event) {
+            resolve(window.ApplePaySession.STATUS_SUCCESS);
+        };
+        config.onShippingContactSelected = config.onShippingContactSelected || function (resolve, reject, event) {
+            resolve({});
+        };
+        config.onShopperDetails = config.onShopperDetails || function (shopperDetails, rawData, actions) {
+            actions.resolve();
+        };
+        config.onPayButtonClick = config.onPayButtonClick || function (resolve, reject) {
+            resolve();
+        };
+        config.onClickToPay = config.onClickToPay || function () {
+        };
 
         const handleOnClick = (resolve, reject) => {
             return config.onPayButtonClick(resolve, reject);
         };
 
+        /* GooglePay callbacks */
+        const handleAuthorized = (paymentData) => {
+            return config.onAuthorized(paymentData);
+        }
+
+        const handlePaymentDataChanged = (intermediatePaymentData) => {
+            return config.onPaymentDataChanged(intermediatePaymentData);
+        };
+
+        const handlePaymentAuthorized = (paymentData) => {
+            return config.onPaymentAuthorized(paymentData);
+        }
+
+        const handleApplePayPaymentAuthorized = (resolve, reject, event) => {
+            return config.onApplePayPaymentAuthorized(resolve, reject, event);
+        }
+
+        const handleOnShippingContactSelected = (resolve, reject, event) => {
+            return config.onShippingContactSelected(resolve, reject, event);
+        }
+
         let checkout,
             activeComponent,
             isStateValid = true,
             sessionStorage = config.sessionStorage || window.sessionStorage,
-            amazonCheckoutSessionId = url.searchParams.get('amazonCheckoutSessionId'),
-            paymentMethodSpecificConfig = {
-                "amazonpay": {
-                    "productType": 'PayOnly',
-                    "checkoutMode": 'ProcessOrder',
-                    "chargePermissionType": 'OneTime',
-                    "onClick": handleOnClick,
-                    "returnUrl": url.href,
-                    "cancelUrl": url.href
-                },
-                "paywithgoogle": { "onClick": handleOnClick, "buttonSizeMode": "fill" },
-                "googlepay": { "onClick": handleOnClick, "buttonSizeMode": "fill" },
-                "paypal": {
-                    "blockPayPalCreditButton": true,
-                    "blockPayPalPayLaterButton": true,
-                    "onClick": (source, event, self) => {
-                        return handleOnClick(event.resolve, event.reject);
-                    }
-                }
+            amazonCheckoutSessionId = url.searchParams.get('amazonCheckoutSessionId');
+
+        let googlePaymentDataCallbacks = {};
+        if (config.requireAddress) {
+            googlePaymentDataCallbacks = {
+                onPaymentDataChanged: handlePaymentDataChanged,
+                onPaymentAuthorized: handlePaymentAuthorized,
             };
+        }
+
+        let paymentMethodSpecificConfig = {
+            "amazonpay": {
+                "productType": 'PayOnly',
+                "checkoutMode": 'ProcessOrder',
+                "chargePermissionType": 'OneTime',
+                "onClick": handleOnClick,
+                "returnUrl": url.href,
+                "cancelUrl": url.href
+            },
+            "paywithgoogle": {
+                onClick: handleOnClick,
+                isExpress: true,
+                callbackIntents: config.requireAddress ? ['SHIPPING_ADDRESS', 'PAYMENT_AUTHORIZATION'] : [],
+                shippingAddressRequired: config.requireAddress,
+                emailRequired: config.requireEmail,
+                shippingAddressParameters: {
+                    allowedCountryCodes: [],
+                    phoneNumberRequired: true
+                },
+                shippingOptionRequired: false,
+                buttonSizeMode: "fill",
+                onAuthorized: handleAuthorized,
+                paymentDataCallbacks: googlePaymentDataCallbacks
+            },
+            "googlepay": {
+                onClick: handleOnClick,
+                isExpress: true,
+                callbackIntents: config.requireAddress ? ['SHIPPING_ADDRESS', 'PAYMENT_AUTHORIZATION'] : [],
+                shippingAddressRequired: config.requireAddress,
+                emailRequired: config.requireEmail,
+                shippingAddressParameters: {
+                    allowedCountryCodes: [],
+                    phoneNumberRequired: true
+                },
+                shippingOptionRequired: false,
+                buttonSizeMode: "fill",
+                onAuthorized: handleAuthorized,
+                paymentDataCallbacks: googlePaymentDataCallbacks
+            },
+            "paypal": {
+                blockPayPalCreditButton: true,
+                blockPayPalPayLaterButton: true,
+                onClick: (source, event, self) => {
+                    return handleOnClick(event.resolve, event.reject);
+                }
+            }
+        };
+
+        if (config.requireAddress) {
+            paymentMethodSpecificConfig.applepay = {
+                isExpress: true,
+                requiredBillingContactFields: ['postalAddress'],
+                requiredShippingContactFields: ['postalAddress', 'name', 'phoneticName', 'phone', 'email'],
+                onAuthorized: handleApplePayPaymentAuthorized,
+            }
+
+            if (config.onShippingContactSelected) {
+                paymentMethodSpecificConfig.applepay.onShippingContactSelected = handleOnShippingContactSelected
+            }
+        }
 
         if (config.amount) {
             paymentMethodSpecificConfig['amazonpay']['amount'] = config.amount;
@@ -125,6 +239,14 @@
                 checkoutConfig.onChange = handleOnChange;
                 checkoutConfig.onSubmit = handleOnChange;
                 checkoutConfig.onAdditionalDetails = handleAdditionalDetails;
+                checkoutConfig.onAuthorized = handleAuthorized;
+                checkoutConfig.onPaymentDataChanged = handlePaymentDataChanged;
+                checkoutConfig.onPaymentAuthorized = handlePaymentAuthorized;
+                checkoutConfig.onApplePayPaymentAuthorized = handleApplePayPaymentAuthorized;
+                if (config.onShippingContactSelected) {
+                    checkoutConfig.onShippingContactSelected = handleOnShippingContactSelected;
+                }
+
                 if (config.showPayButton) {
                     checkoutConfig.showPayButton = true;
                 }
@@ -137,11 +259,26 @@
 
         const handleOnChange = (state) => {
             isStateValid = state.isValid;
+
             if (isStateValid) {
                 sessionStorage.setItem('adyen-payment-method-state-data', JSON.stringify(state.data));
             }
 
+            if (isStateValid && !clickToPayHandled && isClickToPayPaymentMethod(state.data.paymentMethod)) {
+                clickToPayHandled = true;
+                config.onClickToPay();
+            }
+
             config.onStateChange();
+        };
+
+        /**
+         * Returns true if Click to Pay is selected.
+         *
+         * @returns {boolean}
+         */
+        const isClickToPayPaymentMethod = (paymentMethod) => {
+            return paymentMethod.type === 'scheme' && !paymentMethod.hasOwnProperty('encryptedSecurityCode');
         };
 
         const handleAdditionalDetails = (state) => {
@@ -191,6 +328,13 @@
                 // Configuration on the checkout instance level does not work for amazonpay, copy it on component level
                 if ('amazonpay' === paymentType && checkoutInstance.options.paymentMethodsConfiguration[paymentType]) {
                     paymentMethodConfig['configuration'] = checkoutInstance.options.paymentMethodsConfiguration[paymentType].configuration;
+                }
+
+                // If there is applepay specific configuration then set country code to configuration
+                if ('applepay' === paymentType &&
+                    checkoutInstance.options.paymentMethodsConfiguration[paymentType] &&
+                    paymentMethodConfig) {
+                    paymentMethodConfig.countryCode = checkoutInstance.options.countryCode;
                 }
 
                 activeComponent = checkoutInstance.create(
